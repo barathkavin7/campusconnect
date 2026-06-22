@@ -29,19 +29,12 @@ const allowedOrigin = process.env.FRONTEND_ORIGIN || process.env.APP_URL || 'htt
 const io = new Server(server, { cors: { origin: allowedOrigin, credentials: true }, maxHttpBufferSize: 1e6 });
 
 app.set('trust proxy', 1);
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'blob:'],
-      connectSrc: ["'self'", 'ws:', 'wss:'],
-      fontSrc: ["'self'", 'data:']
-    }
-  },
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    strictTransportSecurity: false
+  })
+);
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));

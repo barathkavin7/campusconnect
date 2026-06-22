@@ -197,13 +197,18 @@ async function renderDashboard() {
   } else {
     const m = data.metrics || {};
     metricsHtml = [metric('Resume score', `${m.resume_score || 0}/100`, '⌁', 'Profile strength'), metric('Overall rank', `#${m.overall_rank || '—'}`, '♕', `${Number(m.ranking_score || 0).toFixed(1)} ranking points`, '#fbbf24'), metric('Applications', m.applications, '◫', `${m.shortlisted || 0} shortlisted`, '#22d3ee'), metric('Saved roles', m.saved_jobs, '◇', 'Review your shortlist', '#34d399')].join('');
-    const recommendations = data.recommended?.length ? `<div class="card-grid">${data.recommended.slice(0, 3).map(jobCard).join('')}</div>` : emptyState('⌕', 'No recommendations yet', 'New opportunities will appear here.');
+    const recommendations = data.recommended?.length ? `<div class="card-grid">${data.recommended.slice(0, 3).map(job => jobCard(job)).join('')}</div>` : emptyState('⌕', 'No recommendations yet', 'New opportunities will appear here.');
     content = `<div class="dashboard-grid"><section class="panel"><div class="panel-header"><div><h2>Application activity</h2><p>Your latest status updates</p></div><button data-page="applications">Track all</button></div>${activityList(data.recent)}</section><section class="panel"><div class="panel-header"><div><h2>Readiness</h2><p>Your composite placement score</p></div></div><div class="score-progress"><div><span>Profile strength</span><b>${m.resume_score || 0}%</b></div><div class="progress"><i style="width:${m.resume_score || 0}%"></i></div></div></section></div><section style="margin-top:14px"><div class="panel-header"><div><h2>Recommended for you</h2><p>Fresh roles accepting applications</p></div><button data-page="opportunities">Explore all</button></div>${recommendations}</section>`;
   }
   $('#page-content').innerHTML = pageHeader('Workspace overview', `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, ${first}`, state.user.role === 'admin' ? 'Your campus placement command center.' : 'Here is what deserves your attention today.') + `<div class="metrics-grid">${metricsHtml}</div>${content}`;
 }
 
 function jobCard(job, recruiterView = false) {
+  console.log(
+    "ROLE:", state.user.role,
+    "TITLE:", job.title,
+    "RECRUITER_VIEW:", recruiterView
+  );
   const skills = String(job.skills_required || '').split(',').filter(Boolean).slice(0, 3);
   const compensation = job.type === 'placement' ? `₹${money(job.package_lpa, ' LPA')}` : job.stipend ? `₹${money(job.stipend)}/mo` : 'Unpaid';
   let actions = '';
@@ -215,23 +220,23 @@ function jobCard(job, recruiterView = false) {
 
 async function renderOpportunities() {
   const data = await api('/jobs');
-  $('#page-content').innerHTML = pageHeader('Discover', state.user.role === 'admin' ? 'Jobs & placement drives' : 'Find your next opportunity', state.user.role === 'student' ? 'Verified internships and placement drives, all in one place.' : 'Monitor published opportunities across campus.') + `<div class="filters"><input id="job-search" placeholder="Search roles, companies or skills"><select id="job-type"><option value="">All opportunities</option><option value="internship">Internships</option><option value="placement">Placement drives</option></select><select id="job-mode"><option value="">Any work mode</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select></div><div class="card-grid" id="jobs-grid">${data.jobs.length ? data.jobs.map(jobCard).join('') : emptyState('⌕', 'No open opportunities', 'Check back when recruiters publish new roles.')}</div>`;
+  $('#page-content').innerHTML = pageHeader('Discover', state.user.role === 'admin' ? 'Jobs & placement drives' : 'Find your next opportunity', state.user.role === 'student' ? 'Verified internships and placement drives, all in one place.' : 'Monitor published opportunities across campus.') + `<div class="filters"><input id="job-search" placeholder="Search roles, companies or skills"><select id="job-type"><option value="">All opportunities</option><option value="internship">Internships</option><option value="placement">Placement drives</option></select><select id="job-mode"><option value="">Any work mode</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select></div><div class="card-grid" id="jobs-grid">${data.jobs.length ? data.jobs.map(job => jobCard(job)).join('') : emptyState('⌕', 'No open opportunities', 'Check back when recruiters publish new roles.')}</div>`;
   const filter = () => {
     const query = $('#job-search').value.toLowerCase(); const type = $('#job-type').value; const mode = $('#job-mode').value;
     const jobs = data.jobs.filter((job) => (!query || `${job.title} ${job.company_name} ${job.skills_required}`.toLowerCase().includes(query)) && (!type || job.type === type) && (!mode || job.work_mode === mode));
-    $('#jobs-grid').innerHTML = jobs.length ? jobs.map(jobCard).join('') : emptyState('⌕', 'No matching roles', 'Try changing your filters.');
+    $('#jobs-grid').innerHTML = jobs.length ? jobs.map(job => jobCard(job)).join('') : emptyState('⌕', 'No matching roles', 'Try changing your filters.');
   };
   $('#job-search').addEventListener('input', filter); $('#job-type').addEventListener('change', filter); $('#job-mode').addEventListener('change', filter);
 }
 
 async function renderJobs() {
   const data = await api('/recruiter/jobs');
-  $('#page-content').innerHTML = pageHeader('Recruiting', 'Manage job posts', 'Create internships and placement drives, then watch the pipeline grow.', '<button class="btn primary" data-action="new-job">+ New opportunity</button>') + `<div class="card-grid">${data.jobs.length ? data.jobs.map((job) => jobCard(job, true)).join('') : emptyState('▣', 'Publish your first opportunity', 'A clear, detailed post attracts stronger candidates.', '<button class="btn primary" data-action="new-job">Create job post</button>')}</div>`;
+  $('#page-content').innerHTML = pageHeader('Recruiting', 'Manage job posts', 'Create internships and placement drives, then watch the pipeline grow.', '<button class="btn primary" data-action="new-job">+ New opportunity</button>') + `<div class="card-grid">${data.jobs.length ? data.jobs.map((job) => jobCard(job, state.user.role === 'recruiter')).join('') : emptyState('▣', 'Publish your first opportunity', 'A clear, detailed post attracts stronger candidates.', '<button class="btn primary" data-action="new-job">Create job post</button>')}</div>`;
 }
 
 async function renderSaved() {
   const data = await api('/student/saved-jobs');
-  $('#page-content').innerHTML = pageHeader('Shortlist', 'Saved opportunities', 'Roles you want to revisit before the deadline.') + `<div class="card-grid">${data.jobs.length ? data.jobs.map(jobCard).join('') : emptyState('◇', 'No saved jobs yet', 'Save interesting opportunities to build your shortlist.')}</div>`;
+  $('#page-content').innerHTML = pageHeader('Shortlist', 'Saved opportunities', 'Roles you want to revisit before the deadline.') + `<div class="card-grid">${data.jobs.length ? data.jobs.map(job => jobCard(job)).join('') : emptyState('◇', 'No saved jobs yet', 'Save interesting opportunities to build your shortlist.')}</div>`;
 }
 
 async function renderApplications() {

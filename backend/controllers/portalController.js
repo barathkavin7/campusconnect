@@ -37,7 +37,13 @@ async function dashboard(req, res, next) {
         COALESCE((SELECT AVG(package_lpa) FROM cc_jobs WHERE package_lpa IS NOT NULL),0) average_package`);
       const metrics = metricsRows[0];
       metrics.placement_percentage = metrics.eligible_students ? Number((metrics.placed_students * 100 / metrics.eligible_students).toFixed(1)) : 0;
-      const [trend] = await pool.query(`SELECT DATE_FORMAT(created_at, '%b') label, COUNT(*) value FROM cc_applications WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH) GROUP BY YEAR(created_at), MONTH(created_at) ORDER BY MIN(created_at)`);
+      const [trend] = await pool.query(`SELECT
+  DATE_FORMAT(MIN(created_at), '%b') AS label,
+  COUNT(*) AS value
+FROM cc_applications
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+GROUP BY YEAR(created_at), MONTH(created_at)
+ORDER BY MIN(created_at)`);
       const [departments] = await pool.query(`SELECT d.name label, COUNT(DISTINCT CASE WHEN a.status='selected' THEN a.student_id END) value FROM cc_departments d LEFT JOIN cc_students s ON s.department_id=d.id LEFT JOIN cc_applications a ON a.student_id=s.id GROUP BY d.id ORDER BY value DESC`);
       const [recent] = await pool.query('SELECT l.*, u.full_name FROM cc_activity_logs l LEFT JOIN cc_users u ON u.id=l.user_id ORDER BY l.created_at DESC LIMIT 8');
       return res.json({ metrics, charts: { trend, departments }, recent });
