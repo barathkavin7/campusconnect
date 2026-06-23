@@ -49,7 +49,7 @@ app.use(errorHandler);
 
 configureSocket(io);
 
-const port = Number(process.env.PORT || 3000);
+const port = Number(process.env.PORT || 3103);
 async function start() {
   await pool.query('SELECT 1');
   server.listen(port, () => console.log(`CampusConnect is running on port ${port}`));
